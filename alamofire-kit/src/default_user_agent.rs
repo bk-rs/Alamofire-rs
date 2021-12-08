@@ -208,8 +208,6 @@ impl DefaultUserAgent {
             DefaultUserAgentParseError::AlamofireVersionParseFailed(err.to_string())
         })?;
 
-        buf.clear();
-
         //
         //
         //
