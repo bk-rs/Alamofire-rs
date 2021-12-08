@@ -7,7 +7,7 @@ use semver::Version;
 const UNKNOWN: &str = "Unknown";
 
 //
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefaultUserAgent<'a> {
     pub executable: Option<&'a str>,
     pub app_version: Option<Version>,
@@ -71,7 +71,7 @@ impl fmt::Display for DefaultUserAgent<'_> {
 //
 //
 //
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefaultUserAgentAppBuild(pub Version);
 impl DefaultUserAgentAppBuild {
     pub fn parse(s: impl AsRef<str>) -> Result<Option<Self>, String> {
@@ -120,7 +120,7 @@ impl fmt::Display for DefaultUserAgentAppBuild {
 //
 //
 #[allow(non_camel_case_types)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DefaultUserAgentOsName {
     macOSCatalyst,
     iOS,
