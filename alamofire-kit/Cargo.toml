@@ -1,7 +1,16 @@
 [package]
 name = "alamofire-kit"
 version = "0.1.0"
+authors = ["vkill <vkill.net@gmail.com>"]
 edition = "2021"
+description = "Alamofire Kit"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/bk-rs/Alamofire-rs"
+homepage = "https://github.com/bk-rs/Alamofire-rs"
+documentation = "https://docs.rs/alamofire-kit"
+keywords = []
+categories = []
+readme = "README.md"
 
 [dependencies]
 semver = { version = "1.0", default-features = false }
