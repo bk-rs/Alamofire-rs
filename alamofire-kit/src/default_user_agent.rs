@@ -200,9 +200,11 @@ impl DefaultUserAgent {
             ));
         }
 
-        let alamofire_version = String::from_utf8(buf[..n].to_vec()).map_err(|err| {
-            DefaultUserAgentParseError::AlamofireVersionParseFailed(err.to_string())
-        })?;
+        let alamofire_version =
+            String::from_utf8(buf[..if buf.ends_with(&[b'\n']) { n - 1 } else { n }].to_vec())
+                .map_err(|err| {
+                    DefaultUserAgentParseError::AlamofireVersionParseFailed(err.to_string())
+                })?;
 
         let alamofire_version = Version::parse(&alamofire_version).map_err(|err| {
             DefaultUserAgentParseError::AlamofireVersionParseFailed(err.to_string())
