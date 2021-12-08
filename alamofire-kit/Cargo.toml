@@ -1,0 +1,7 @@
+[package]
+name = "alamofire-kit"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+semver = { version = "1.0", default-features = false }
