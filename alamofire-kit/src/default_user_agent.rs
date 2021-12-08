@@ -1,6 +1,10 @@
 //! [Ref](https://github.com/Alamofire/Alamofire/blob/5.4.4/Source/HTTPHeaders.swift#L372)
 
-use std::{error, fmt, str::FromStr};
+use std::{
+    error, fmt,
+    io::{self, BufRead as _},
+    str::{self, FromStr},
+};
 
 use semver::Version;
 
@@ -8,25 +12,246 @@ const UNKNOWN: &str = "Unknown";
 
 //
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DefaultUserAgent<'a> {
-    pub executable: Option<&'a str>,
+pub struct DefaultUserAgent {
+    pub executable: Option<String>,
     pub app_version: Option<Version>,
-    pub bundle: Option<&'a str>,
+    pub bundle: Option<String>,
     pub app_build: Option<DefaultUserAgentAppBuild>,
     pub os_name: Option<DefaultUserAgentOsName>,
     pub os_version: Version,
     pub alamofire_version: Version,
 }
 
-impl<'a> DefaultUserAgent<'a> {
-    pub fn parse(_s: impl AsRef<str>) -> Result<Self, DefaultUserAgentParseError> {
-        todo!()
+impl DefaultUserAgent {
+    pub fn parse(s: impl AsRef<str>) -> Result<Self, DefaultUserAgentParseError> {
+        let s = s.as_ref().as_bytes();
+
+        let mut cursor = io::Cursor::new(s);
+        let mut buf = vec![];
+
+        //
+        //
+        //
+        let n = cursor
+            .read_until(b'/', &mut buf)
+            .map_err(|err| DefaultUserAgentParseError::ExecutableReadFailed(err.to_string()))?;
+        if !buf.ends_with(&[b'/']) {
+            return Err(DefaultUserAgentParseError::ExecutableReadFailed(
+                "Invalid".to_owned(),
+            ));
+        }
+        let mut executable =
+            Some(String::from_utf8(buf[..n - 1].to_vec()).map_err(|err| {
+                DefaultUserAgentParseError::ExecutableParseFailed(err.to_string())
+            })?);
+        if executable.as_deref() == Some(UNKNOWN) {
+            executable = None;
+        }
+        buf.clear();
+
+        //
+        //
+        //
+        let n = cursor
+            .read_until(b' ', &mut buf)
+            .map_err(|err| DefaultUserAgentParseError::AppVersionReadFailed(err.to_string()))?;
+        if !buf.ends_with(&[b' ']) {
+            return Err(DefaultUserAgentParseError::AppVersionReadFailed(
+                "Invalid".to_owned(),
+            ));
+        }
+        let mut app_version =
+            Some(String::from_utf8(buf[..n - 1].to_vec()).map_err(|err| {
+                DefaultUserAgentParseError::AppVersionParseFailed(err.to_string())
+            })?);
+        if app_version.as_deref() == Some(UNKNOWN) {
+            app_version = None;
+        }
+
+        let app_version = if let Some(app_version) = app_version {
+            Some(Version::parse(&app_version).map_err(|err| {
+                DefaultUserAgentParseError::AppVersionParseFailed(err.to_string())
+            })?)
+        } else {
+            None
+        };
+
+        buf.clear();
+
+        //
+        //
+        //
+        if !cursor.get_ref()[cursor.position() as usize..].starts_with(&[b'(']) {
+            return Err(DefaultUserAgentParseError::Other("Mismatch AppVersion end"));
+        }
+        cursor.set_position(cursor.position() + 1);
+
+        //
+        //
+        //
+        let n = cursor
+            .read_until(b';', &mut buf)
+            .map_err(|err| DefaultUserAgentParseError::BundleReadFailed(err.to_string()))?;
+        if !buf.ends_with(&[b';']) {
+            return Err(DefaultUserAgentParseError::BundleReadFailed(
+                "Invalid".to_owned(),
+            ));
+        }
+        let mut bundle = Some(
+            String::from_utf8(buf[..n - 1].to_vec())
+                .map_err(|err| DefaultUserAgentParseError::BundleParseFailed(err.to_string()))?,
+        );
+        if bundle.as_deref() == Some(UNKNOWN) {
+            bundle = None;
+        }
+
+        buf.clear();
+
+        //
+        //
+        //
+        if !cursor.get_ref()[cursor.position() as usize..].starts_with(b" build:") {
+            return Err(DefaultUserAgentParseError::Other("Mismatch Bundle end"));
+        }
+        cursor.set_position(cursor.position() + 7);
+
+        //
+        //
+        //
+        let n = cursor
+            .read_until(b';', &mut buf)
+            .map_err(|err| DefaultUserAgentParseError::AppBuildReadFailed(err.to_string()))?;
+        if !buf.ends_with(&[b';']) {
+            return Err(DefaultUserAgentParseError::AppBuildReadFailed(
+                "Invalid".to_owned(),
+            ));
+        }
+        let app_build = String::from_utf8(buf[..n - 1].to_vec())
+            .map_err(|err| DefaultUserAgentParseError::AppBuildParseFailed(err.to_string()))?;
+
+        let app_build = DefaultUserAgentAppBuild::parse(app_build)
+            .map_err(DefaultUserAgentParseError::AppBuildParseFailed)?;
+
+        buf.clear();
+
+        //
+        //
+        //
+        if !cursor.get_ref()[cursor.position() as usize..].starts_with(&[b' ']) {
+            return Err(DefaultUserAgentParseError::Other("Mismatch AppBuild end"));
+        }
+        cursor.set_position(cursor.position() + 1);
+
+        //
+        //
+        //
+        let n = cursor
+            .read_until(b' ', &mut buf)
+            .map_err(|err| DefaultUserAgentParseError::OsNameReadFailed(err.to_string()))?;
+        if !buf.ends_with(&[b' ']) {
+            return Err(DefaultUserAgentParseError::OsNameReadFailed(
+                "Invalid".to_owned(),
+            ));
+        }
+        let os_name = String::from_utf8(buf[..n - 1].to_vec())
+            .map_err(|err| DefaultUserAgentParseError::OsNameParseFailed(err.to_string()))?;
+
+        let os_name = DefaultUserAgentOsName::parse(os_name)
+            .map_err(|err| DefaultUserAgentParseError::OsNameParseFailed(err.to_string()))?;
+
+        buf.clear();
+
+        //
+        //
+        //
+        let n = cursor
+            .read_until(b')', &mut buf)
+            .map_err(|err| DefaultUserAgentParseError::OsVersionReadFailed(err.to_string()))?;
+        if !buf.ends_with(&[b')']) {
+            return Err(DefaultUserAgentParseError::OsVersionReadFailed(
+                "Invalid".to_owned(),
+            ));
+        }
+        let os_version = String::from_utf8(buf[..n - 1].to_vec())
+            .map_err(|err| DefaultUserAgentParseError::OsVersionParseFailed(err.to_string()))?;
+
+        let os_version = Version::parse(&os_version)
+            .map_err(|err| DefaultUserAgentParseError::OsVersionParseFailed(err.to_string()))?;
+
+        buf.clear();
+
+        //
+        //
+        //
+        if !cursor.get_ref()[cursor.position() as usize..].starts_with(b" Alamofire/") {
+            return Err(DefaultUserAgentParseError::Other("Mismatch OsVersion end"));
+        }
+        cursor.set_position(cursor.position() + 11);
+
+        //
+        //
+        //
+        let n = cursor.read_until(b'\n', &mut buf).map_err(|err| {
+            DefaultUserAgentParseError::AlamofireVersionReadFailed(err.to_string())
+        })?;
+        if !cursor.get_ref()[cursor.position() as usize..].is_empty() {
+            return Err(DefaultUserAgentParseError::Other(
+                "Mismatch AlamofireVersion end",
+            ));
+        }
+
+        let alamofire_version = String::from_utf8(buf[..n].to_vec()).map_err(|err| {
+            DefaultUserAgentParseError::AlamofireVersionParseFailed(err.to_string())
+        })?;
+
+        let alamofire_version = Version::parse(&alamofire_version).map_err(|err| {
+            DefaultUserAgentParseError::AlamofireVersionParseFailed(err.to_string())
+        })?;
+
+        buf.clear();
+
+        //
+        //
+        //
+        Ok(DefaultUserAgent {
+            executable,
+            app_version,
+            bundle,
+            app_build,
+            os_name,
+            os_version,
+            alamofire_version,
+        })
     }
 }
 
 //
 #[derive(Debug, Clone)]
-pub enum DefaultUserAgentParseError {}
+pub enum DefaultUserAgentParseError {
+    //
+    ExecutableReadFailed(String),
+    ExecutableParseFailed(String),
+    //
+    AppVersionReadFailed(String),
+    AppVersionParseFailed(String),
+    //
+    BundleReadFailed(String),
+    BundleParseFailed(String),
+    //
+    AppBuildReadFailed(String),
+    AppBuildParseFailed(String),
+    //
+    OsNameReadFailed(String),
+    OsNameParseFailed(String),
+    //
+    OsVersionReadFailed(String),
+    OsVersionParseFailed(String),
+    //
+    AlamofireVersionReadFailed(String),
+    AlamofireVersionParseFailed(String),
+    //
+    Other(&'static str),
+}
 impl fmt::Display for DefaultUserAgentParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
@@ -35,25 +260,25 @@ impl fmt::Display for DefaultUserAgentParseError {
 impl error::Error for DefaultUserAgentParseError {}
 
 //
-impl<'a> FromStr for DefaultUserAgent<'a> {
+impl FromStr for DefaultUserAgent {
     type Err = DefaultUserAgentParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
+        Self::parse(s.to_string().as_str())
     }
 }
 
-impl fmt::Display for DefaultUserAgent<'_> {
+impl fmt::Display for DefaultUserAgent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}/{} ({}; build:{}; {} {}) Alamofire/{}",
-            self.executable.unwrap_or(UNKNOWN),
+            self.executable.as_ref().unwrap_or(&UNKNOWN.to_owned()),
             self.app_version
                 .as_ref()
                 .map(|x| x.to_string())
                 .unwrap_or_else(|| UNKNOWN.to_owned()),
-            self.bundle.unwrap_or(UNKNOWN),
+            self.bundle.as_ref().unwrap_or(&UNKNOWN.to_owned()),
             self.app_build
                 .as_ref()
                 .map(|x| x.to_string())
@@ -174,12 +399,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_parse() {
+        assert_eq!(
+            DefaultUserAgent::parse(
+                "iOS Example/1.0.0 (org.alamofire.iOS-Example; build:1; iOS 13.0.0) Alamofire/5.0.0"
+            )
+            .unwrap(),
+            DefaultUserAgent {
+                executable: Some("iOS Example".to_owned()),
+                app_version: Some("1.0.0".parse().unwrap()),
+                bundle: Some("org.alamofire.iOS-Example".to_owned()),
+                app_build: Some(DefaultUserAgentAppBuild("1.0.0".parse().unwrap())),
+                os_name: Some(DefaultUserAgentOsName::iOS),
+                os_version: "13.0.0".parse().unwrap(),
+                alamofire_version: "5.0.0".parse().unwrap()
+            }
+        );
+
+        assert_eq!(
+            DefaultUserAgent::parse(
+                "Unknown/Unknown (Unknown; build:Unknown; Unknown 13.0.0) Alamofire/5.0.0"
+            )
+            .unwrap(),
+            DefaultUserAgent {
+                executable: None,
+                app_version: None,
+                bundle: None,
+                app_build: None,
+                os_name: None,
+                os_version: "13.0.0".parse().unwrap(),
+                alamofire_version: "5.0.0".parse().unwrap()
+            }
+        );
+    }
+
+    #[test]
     fn test_to_string() {
         assert_eq!(
             DefaultUserAgent {
-                executable: Some("iOS Example"),
+                executable: Some("iOS Example".to_owned()),
                 app_version: Some("1.0.0".parse().unwrap()),
-                bundle: Some("org.alamofire.iOS-Example"),
+                bundle: Some("org.alamofire.iOS-Example".to_owned()),
                 app_build: Some(DefaultUserAgentAppBuild("1.0.0".parse().unwrap())),
                 os_name: Some(DefaultUserAgentOsName::iOS),
                 os_version: "13.0.0".parse().unwrap(),
