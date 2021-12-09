@@ -10,6 +10,9 @@ use semver::Version;
 
 const UNKNOWN: &str = "Unknown";
 
+const OS_VERSION_DEFAULT: &(u64, u64, u64) = &(15, 1, 0);
+const ALAMOFIRE_VERSION_DEFAULT: &(u64, u64, u64) = &(5, 4, 4);
+
 //
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DefaultUserAgent {
@@ -20,6 +23,31 @@ pub struct DefaultUserAgent {
     pub os_name: Option<DefaultUserAgentOsName>,
     pub os_version: Version,
     pub alamofire_version: Version,
+}
+impl Default for DefaultUserAgent {
+    fn default() -> Self {
+        Self {
+            executable: None,
+            app_version: None,
+            bundle: None,
+            app_build: None,
+            os_name: None,
+            os_version: Version {
+                major: OS_VERSION_DEFAULT.0,
+                minor: OS_VERSION_DEFAULT.1,
+                patch: OS_VERSION_DEFAULT.2,
+                pre: Default::default(),
+                build: Default::default(),
+            },
+            alamofire_version: Version {
+                major: ALAMOFIRE_VERSION_DEFAULT.0,
+                minor: ALAMOFIRE_VERSION_DEFAULT.1,
+                patch: ALAMOFIRE_VERSION_DEFAULT.2,
+                pre: Default::default(),
+                build: Default::default(),
+            },
+        }
+    }
 }
 
 impl DefaultUserAgent {
@@ -397,6 +425,22 @@ impl fmt::Display for DefaultUserAgentOsName {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_default() {
+        assert_eq!(
+            DefaultUserAgent::default(),
+            DefaultUserAgent {
+                executable: None,
+                app_version: None,
+                bundle: None,
+                app_build: None,
+                os_name: None,
+                os_version: "15.1.0".parse().unwrap(),
+                alamofire_version: "5.4.4".parse().unwrap()
+            }
+        );
+    }
 
     #[test]
     fn test_parse() {
