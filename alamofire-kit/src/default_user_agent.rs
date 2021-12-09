@@ -23,10 +23,10 @@ pub struct DefaultUserAgent {
 }
 
 impl DefaultUserAgent {
-    pub fn parse(s: impl AsRef<str>) -> Result<Self, DefaultUserAgentParseError> {
-        let s = s.as_ref().as_bytes();
+    pub fn parse(bytes: impl AsRef<[u8]>) -> Result<Self, DefaultUserAgentParseError> {
+        let bytes = bytes.as_ref();
 
-        let mut cursor = io::Cursor::new(s);
+        let mut cursor = io::Cursor::new(bytes);
         let mut buf = vec![];
 
         //
