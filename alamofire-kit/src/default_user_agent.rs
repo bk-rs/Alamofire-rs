@@ -1,5 +1,3 @@
-#![allow(unknown_lints)]
-#![allow(clippy::uninlined_format_args)] // Added in 1.65.0
 //! [Ref](https://github.com/Alamofire/Alamofire/blob/5.6.4/Source/HTTPHeaders.swift#L370)
 
 use std::{
@@ -284,7 +282,7 @@ pub enum DefaultUserAgentParseError {
 }
 impl fmt::Display for DefaultUserAgentParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 impl error::Error for DefaultUserAgentParseError {}
@@ -343,10 +341,11 @@ impl FromStr for OptionDefaultUserAgentAppBuild {
             UNKNOWN => Ok(Self(None)),
             _ => {
                 let version = match s.split('.').count() {
-                    1 => Version::parse(format!("{}.0.0", s).as_str())
+                    1 => Version::parse(format!("{s}.0.0").as_str())
                         .map_err(|err| err.to_string())?,
-                    2 => Version::parse(format!("{}.0", s).as_str())
-                        .map_err(|err| err.to_string())?,
+                    2 => {
+                        Version::parse(format!("{s}.0").as_str()).map_err(|err| err.to_string())?
+                    }
                     3 => Version::parse(s).map_err(|err| err.to_string())?,
                     _ => {
                         return Err("Invalid".to_owned());
