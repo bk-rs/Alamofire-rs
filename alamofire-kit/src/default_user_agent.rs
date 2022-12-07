@@ -1,4 +1,6 @@
-//! [Ref](https://github.com/Alamofire/Alamofire/blob/5.4.4/Source/HTTPHeaders.swift#L372)
+#![allow(unknown_lints)]
+#![allow(clippy::uninlined_format_args)] // Added in 1.65.0
+//! [Ref](https://github.com/Alamofire/Alamofire/blob/5.6.4/Source/HTTPHeaders.swift#L370)
 
 use std::{
     error, fmt,
@@ -10,8 +12,8 @@ use semver::Version;
 
 const UNKNOWN: &str = "Unknown";
 
-const OS_VERSION_DEFAULT: &(u64, u64, u64) = &(15, 1, 0);
-const ALAMOFIRE_VERSION_DEFAULT: &(u64, u64, u64) = &(5, 4, 4);
+const OS_VERSION_DEFAULT: &(u64, u64, u64) = &(0, 0, 0);
+const ALAMOFIRE_VERSION_DEFAULT: &(u64, u64, u64) = &(5, 6, 4);
 
 //
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -436,8 +438,8 @@ mod tests {
                 bundle: None,
                 app_build: None,
                 os_name: None,
-                os_version: "15.1.0".parse().unwrap(),
-                alamofire_version: "5.4.4".parse().unwrap()
+                os_version: "0.0.0".parse().unwrap(),
+                alamofire_version: "5.6.4".parse().unwrap()
             }
         );
     }

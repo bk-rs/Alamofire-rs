@@ -13,4 +13,4 @@ categories = []
 readme = "README.md"
 
 [dependencies]
-semver = { version = "1.0", default-features = false }
+semver = { version = "1", default-features = false }
